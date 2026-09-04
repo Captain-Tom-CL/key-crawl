@@ -1,0 +1,6 @@
+{
+    "apiKey": "",
+    "baseURL": "https://api.deepseek.com",
+    "model": "deepseek-v4-pro",
+    "prompt": "你是一个专业的网页内容分析师, 帮我提取文章里的JournalName、Title、Description(AI撰写, 70-100词内)、KeyFindings(AI撰写,100-200词),Figure(选取一张Key findings对应的最佳图片)、Contribution(分析**Creative Biogene**在该文章中做出了哪些贡献,控制在50词内)、DOI URL、PublicationType(Paper or Patent)、PublicationTime(建议用年)、Authors."
+}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Key Crawl 设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand-mark" aria-hidden="true">K</div>
+      <div>
+        <p class="eyebrow">KEY CRAWL</p>
+        <h1>分析服务设置</h1>
+        <p class="subtitle">配置本地服务与内容分析模型。</p>
+      </div>
+      <div class="connection" id="connectionStatus" data-state="checking" role="status">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="connectionText">正在连接</span>
+      </div>
+    </header>
+
+    <form id="settingsForm" class="settings-form">
+      <section class="section" aria-labelledby="serviceHeading">
+        <div class="section-heading">
+          <span class="section-index">01</span>
+          <div>
+            <h2 id="serviceHeading">本地服务</h2>
+            <p>扩展通过此地址与 Key Crawl EXE 通信。</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="serviceURL">服务地址</label>
+          <input id="serviceURL" name="serviceURL" type="url" value="http://127.0.0.1:1323" required spellcheck="false">
+          <p class="hint">修改地址后将自动重新检查连接。</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="modelHeading">
+        <div class="section-heading">
+          <span class="section-index">02</span>
+          <div>
+            <h2 id="modelHeading">模型服务</h2>
+            <p>这些配置保存在程序目录下的 data/settings.json 中。</p>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field field-wide">
+            <label for="baseURL">API 地址</label>
+            <input id="baseURL" name="baseURL" type="url" placeholder="https://api.openai.com/v1" required spellcheck="false">
+          </div>
+
+          <div class="field">
+            <label for="model">模型</label>
+            <input id="model" name="model" type="text" placeholder="gpt-5.2" required spellcheck="false">
+          </div>
+
+          <div class="field">
+            <label for="apiKey">API Key</label>
+            <input id="apiKey" name="apiKey" type="password" placeholder="sk-..." required autocomplete="off" spellcheck="false">
+            <label class="check-row" for="showApiKey">
+              <input id="showApiKey" type="checkbox">
+              <span>显示密钥</span>
+            </label>
+          </div>
+
+          <div class="field field-wide">
+            <label for="prompt">分析提示词</label>
+            <textarea id="prompt" name="prompt" rows="8" placeholder="说明如何分析页面，以及每个字段应如何生成。" required></textarea>
+            <div class="field-meta">
+              <span>明确要求返回 JSON 可提升兼容服务的稳定性。</span>
+              <span id="promptCount">0 字符</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="form-actions">
+        <p class="save-status" id="saveStatus" role="status" aria-live="polite"></p>
+        <button id="reloadButton" class="button button-secondary" type="button">重新载入</button>
+        <button id="saveButton" class="button button-primary" type="submit">保存配置</button>
+      </footer>
+    </form>
+  </main>
+
+  <script src="options.js"></script>
+</body>
+</html>
