@@ -181,6 +181,30 @@ input:focus {
     margin-bottom: 15px;
 }
 
+.queue-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.results-button {
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid #bfd5ca;
+    border-radius: 4px;
+    color: var(--accent);
+    background: #f2f8f5;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.results-button:hover {
+    border-color: var(--accent);
+    color: #fff;
+    background: var(--accent);
+}
+
 .count {
     display: grid;
     min-width: 32px;

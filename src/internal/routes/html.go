@@ -1,9 +1,9 @@
 package routes
 
 import (
+	"encoding/base64"
 	"os"
 	"path"
-	"regexp"
 	"strings"
 
 	"github.com/labstack/echo/v5"
@@ -27,9 +27,8 @@ func saveHTML(c *echo.Context) error {
 	if url == "" {
 		return echo.NewHTTPError(400, "x-url header is required")
 	}
-	url = strings.ToLower(url)
-	reg := regexp.MustCompile(`[^0-9a-z\.\-]+`)
-	f, err := os.OpenFile(path.Join(htmlFolder, reg.ReplaceAllString(url, "-")), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	url = base64.URLEncoding.EncodeToString([]byte(url))
+	f, err := os.OpenFile(path.Join(htmlFolder, url), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}

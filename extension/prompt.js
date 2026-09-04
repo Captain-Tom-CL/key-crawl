@@ -9,6 +9,7 @@ const openLinksButton = document.querySelector("#openLinks")
 const sendPagesButton = document.querySelector("#sendPages")
 const analyzePagesButton = document.querySelector("#analyzePages")
 const openOptionsButton = document.querySelector("#openOptions")
+const openResultsButton = document.querySelector("#openResults")
 const tabList = document.querySelector("#tabList")
 const emptyState = document.querySelector("#emptyState")
 const queueCount = document.querySelector("#queueCount")
@@ -234,11 +235,19 @@ async function analyzePages() {
     }
 }
 
+async function openResults() {
+    const { [SERVICE_URL_KEY]: savedServiceURL } = await chrome.storage.local.get(SERVICE_URL_KEY)
+    const serviceURL = (savedServiceURL || DEFAULT_SERVICE_URL).replace(/\/$/, "")
+    await chrome.tabs.create({ url: `${serviceURL}/results` })
+    window.close()
+}
+
 selectorInput.addEventListener("change", () => {
     chrome.storage.local.set({ [SELECTOR_KEY]: selectorInput.value.trim() })
 })
 openLinksButton.addEventListener("click", openAllLinks)
 sendPagesButton.addEventListener("click", sendAllPages)
 analyzePagesButton.addEventListener("click", analyzePages)
+openResultsButton.addEventListener("click", openResults)
 openOptionsButton.addEventListener("click", () => chrome.runtime.openOptionsPage())
 document.addEventListener("DOMContentLoaded", restoreState)

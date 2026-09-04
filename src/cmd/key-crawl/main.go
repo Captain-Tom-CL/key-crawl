@@ -39,6 +39,7 @@ func startServer(isDev bool) {
 	routes.RegisterSettingsRoutes(e)
 	routes.RegisterHTMLRoutes(e)
 	routes.RegisterAnalyzerRoutes(e)
+	routes.RegisterResultsRoutes(e)
 	if err := e.Start(":1323"); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
 	}
