@@ -12,7 +12,7 @@ import (
 )
 
 const key string = "4195282"
-const version string = "2"
+const version string = "3"
 
 func main() {
 	v := flag.String("version", "", "version check")
