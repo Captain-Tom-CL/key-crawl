@@ -10,9 +10,6 @@
 # Temporary downloads
 *.download
 
-# Distributed manually to customers
-/launch.ps1
-
 # Keep source configuration and directories trackable
 !/bin/.gitkeep
 !/build/.gitkeep

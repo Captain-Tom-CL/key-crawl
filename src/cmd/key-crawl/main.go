@@ -5,31 +5,53 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Captain-Tom-CL/key-crawl/src/internal/routes"
+	"github.com/captain-tom-cl/key-crawl/src/internal/routes"
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 )
 
-const key string = "4195282"
-const version string = "4"
-
 func main() {
-	v := flag.String("version", "", "version check")
-	startKey := flag.String("key", "", "start key")
+	applyUpdatePath := flag.String("apply-update", "", "internal update target")
+	extensionUpdatePath := flag.String("extension-update", "", "internal extension target")
+	cleanupUpdatePath := flag.String("cleanup-update", "", "internal update cleanup path")
 	isDev := flag.Bool("dev", false, "enable development mode")
 	flag.Parse()
-	if *v != "" {
-		fmt.Print(version)
-		os.Exit(0)
+
+	if *applyUpdatePath != "" {
+		if err := applyUpdate(*applyUpdatePath, *extensionUpdatePath); err != nil {
+			fmt.Fprintln(os.Stderr, "应用更新失败:", err)
+			os.Exit(1)
+		}
+		return
 	}
-	if *startKey != key {
-		fmt.Println("unauthorized")
-		os.Exit(1)
+	if !*isDev {
+		if err := setApplicationWorkingDirectory(); err != nil {
+			fmt.Fprintln(os.Stderr, "设置应用工作目录失败:", err)
+			os.Exit(1)
+		}
 	}
+	if *cleanupUpdatePath != "" {
+		go cleanupUpdateFiles(*cleanupUpdatePath)
+	}
+
+	if !*isDev {
+		restarting, err := update()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "自动更新检查失败，将继续启动当前版本:", err)
+		} else if restarting {
+			return
+		}
+	}
+
 	startServer(*isDev)
 }
+
 func startServer(isDev bool) {
+	if err := routes.InitializeStorage(); err != nil {
+		fmt.Fprintln(os.Stderr, "初始化数据目录失败:", err)
+		return
+	}
 	e := echo.New()
 	if isDev {
 		e.Use(middleware.RequestLogger())

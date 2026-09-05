@@ -9,9 +9,11 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func init() {
-	os.MkdirAll(htmlFolder, 0755)
-	os.MkdirAll(resultsFolder, 0755)
+func InitializeStorage() error {
+	if err := os.MkdirAll(htmlFolder, 0755); err != nil {
+		return err
+	}
+	return os.MkdirAll(resultsFolder, 0755)
 }
 
 func RegisterHTMLRoutes(e *echo.Echo) {

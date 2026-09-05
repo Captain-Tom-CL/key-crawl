@@ -1,4 +1,4 @@
-module github.com/Captain-Tom-CL/key-crawl
+module github.com/captain-tom-cl/key-crawl
 
 go 1.27.0
 
