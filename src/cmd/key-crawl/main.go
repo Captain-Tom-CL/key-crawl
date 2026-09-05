@@ -57,11 +57,13 @@ func startServer(isDev bool) {
 		e.Use(middleware.RequestLogger())
 	}
 	e.Use(middleware.Recover())
+	routes.RegisterHomeRoutes(e)
 	routes.RegisterHealthRoutes(e)
 	routes.RegisterSettingsRoutes(e)
 	routes.RegisterHTMLRoutes(e)
 	routes.RegisterAnalyzerRoutes(e)
 	routes.RegisterResultsRoutes(e)
+	fmt.Println("打开 http://localhost:1323 查看说明")
 	if err := e.Start(":1323"); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
 	}

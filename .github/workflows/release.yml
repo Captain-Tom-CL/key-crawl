@@ -32,25 +32,7 @@ jobs:
 
       - name: Package application
         shell: pwsh
-        env:
-          KEY_CRAWL_BEFORE_SHA: ${{ github.event.before }}
         run: ./scripts/package.ps1
-
-      - name: Commit extension version bump
-        shell: pwsh
-        run: |
-          git diff --quiet -- extension/manifest.json
-          if ($LASTEXITCODE -eq 1) {
-            $version = ([string]((Get-Content ./extension/manifest.json -Raw | ConvertFrom-Json).version)).Trim()
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -- extension/manifest.json
-            git commit -m "chore: bump extension version to $version [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
-          }
-          elseif ($LASTEXITCODE -ne 0) {
-            throw "Unable to inspect extension/manifest.json changes."
-          }
 
       - name: Create GitHub release
         shell: pwsh
