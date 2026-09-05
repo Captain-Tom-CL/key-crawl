@@ -31,9 +31,9 @@ var (
 )
 
 type releaseAsset struct {
-	Name               string `json:"name"`
-	BrowserDownloadURL string `json:"browser_download_url"`
-	Digest             string `json:"digest"`
+	Name   string `json:"name"`
+	APIURL string `json:"url"`
+	Digest string `json:"digest"`
 }
 
 type latestRelease struct {
@@ -74,7 +74,7 @@ func update() (bool, error) {
 		return false, fmt.Errorf("计算当前程序 SHA-256: %w", err)
 	}
 	remoteExecutableChecksum := strings.TrimPrefix(strings.ToLower(executableAsset.Digest), "sha256:")
-	remoteExtensionVersion, err := fetchText(extensionVersionAsset.BrowserDownloadURL, 64)
+	remoteExtensionVersion, err := fetchAssetText(extensionVersionAsset.APIURL, 64)
 	if err != nil {
 		return false, err
 	}
@@ -131,8 +131,8 @@ func update() (bool, error) {
 		path     string
 		checksum string
 	}{
-		{name: executableName, url: executableAsset.BrowserDownloadURL, path: stagedExecutable, checksum: remoteExecutableChecksum},
-		{name: extensionAssetName, url: extensionAsset.BrowserDownloadURL, path: stagedArchive, checksum: strings.TrimPrefix(strings.ToLower(extensionAsset.Digest), "sha256:")},
+		{name: executableName, url: executableAsset.APIURL, path: stagedExecutable, checksum: remoteExecutableChecksum},
+		{name: extensionAssetName, url: extensionAsset.APIURL, path: stagedArchive, checksum: strings.TrimPrefix(strings.ToLower(extensionAsset.Digest), "sha256:")},
 	}
 	for _, asset := range assets {
 		fmt.Printf("正在下载 %s...\n", asset.name)
@@ -201,7 +201,7 @@ func fetchLatestReleaseAssets() (map[string]releaseAsset, error) {
 
 func requireReleaseAsset(assets map[string]releaseAsset, name string, requireDigest bool) (releaseAsset, error) {
 	asset, ok := assets[name]
-	if !ok || asset.BrowserDownloadURL == "" {
+	if !ok || asset.APIURL == "" {
 		return releaseAsset{}, fmt.Errorf("GitHub Release 缺少资产 %s", name)
 	}
 	if requireDigest {
@@ -254,11 +254,12 @@ func readExtensionVersion(extensionDirectory string) (string, error) {
 	return manifest.Version, nil
 }
 
-func fetchText(url string, limit int64) (string, error) {
+func fetchAssetText(url string, limit int64) (string, error) {
 	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		return "", fmt.Errorf("创建请求: %w", err)
 	}
+	setAssetDownloadHeaders(request)
 	response, err := updateCheckClient.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("请求 %s: %w", url, err)
@@ -282,6 +283,7 @@ func downloadAndVerify(url, destination, expectedChecksum string) error {
 	if err != nil {
 		return fmt.Errorf("创建下载请求: %w", err)
 	}
+	setAssetDownloadHeaders(request)
 	response, err := updateDownloadClient.Do(request)
 	if err != nil {
 		return fmt.Errorf("下载 %s: %w", url, err)
@@ -315,6 +317,12 @@ func downloadAndVerify(url, destination, expectedChecksum string) error {
 		return fmt.Errorf("%s 的 SHA-256 校验失败", url)
 	}
 	return nil
+}
+
+func setAssetDownloadHeaders(request *http.Request) {
+	request.Header.Set("Accept", "application/octet-stream")
+	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	request.Header.Set("User-Agent", "key-crawl-updater")
 }
 
 func extractZip(archivePath, destination string) error {
