@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	fmt.Println("应用启动中...")
 	applyUpdatePath := flag.String("apply-update", "", "internal update target")
 	extensionUpdatePath := flag.String("extension-update", "", "internal extension target")
 	cleanupUpdatePath := flag.String("cleanup-update", "", "internal update cleanup path")
@@ -63,7 +64,8 @@ func startServer(isDev bool) {
 	routes.RegisterHTMLRoutes(e)
 	routes.RegisterAnalyzerRoutes(e)
 	routes.RegisterResultsRoutes(e)
-	fmt.Println("打开 http://localhost:1323 查看说明")
+	fmt.Println()
+	fmt.Println("\033[1;32m● 服务已启动\033[0m  打开 \033[1;4;94mhttp://localhost:1323\033[0m 查看说明")
 	if err := e.Start(":1323"); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
 	}

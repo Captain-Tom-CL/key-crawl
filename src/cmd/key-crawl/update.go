@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -28,6 +29,9 @@ const (
 var (
 	updateCheckClient    = &http.Client{Timeout: 8 * time.Second}
 	updateDownloadClient = &http.Client{Timeout: 5 * time.Minute}
+	markdownLinkPattern  = regexp.MustCompile(`\[([^]]+)]\(https?://[^)[:space:]]+\)`)
+	webURLPattern        = regexp.MustCompile(`https?://[^[:space:]<>)]+`)
+	sourceNamePattern    = regexp.MustCompile(`(?i)github(?:\.com)?`)
 )
 
 type releaseAsset struct {
@@ -37,7 +41,10 @@ type releaseAsset struct {
 }
 
 type latestRelease struct {
-	Assets []releaseAsset `json:"assets"`
+	Name    string         `json:"name"`
+	TagName string         `json:"tag_name"`
+	Body    string         `json:"body"`
+	Assets  []releaseAsset `json:"assets"`
 }
 
 func update() (bool, error) {
@@ -52,9 +59,13 @@ func update() (bool, error) {
 	}
 	rootDirectory := filepath.Dir(executablePath)
 	extensionDirectory := filepath.Join(rootDirectory, "extension")
-	releaseAssets, err := fetchLatestReleaseAssets()
+	release, err := fetchLatestRelease()
 	if err != nil {
 		return false, err
+	}
+	releaseAssets := make(map[string]releaseAsset, len(release.Assets))
+	for _, asset := range release.Assets {
+		releaseAssets[asset.Name] = asset
 	}
 	executableAsset, err := requireReleaseAsset(releaseAssets, executableName, true)
 	if err != nil {
@@ -95,20 +106,24 @@ func update() (bool, error) {
 
 	if extensionChanged {
 		if extensionMissing {
-			fmt.Println("未找到完整的 extension 目录，将自动下载并恢复。")
+			fmt.Println("未找到完整的 extension 目录，可以下载并恢复。")
 		} else {
-			fmt.Printf("扩展版本不一致（本地 %s，远端 %s），将自动更新。\n", localExtensionVersion, remoteExtensionVersion)
+			fmt.Printf("扩展版本不一致（本地 %s，远端 %s）。\n", localExtensionVersion, remoteExtensionVersion)
 		}
-	} else {
-		fmt.Print("发现程序更新，是否立即更新？[y/N]: ")
-		input, readErr := bufio.NewReader(os.Stdin).ReadString('\n')
-		if readErr != nil && !errors.Is(readErr, io.EOF) {
-			return false, fmt.Errorf("读取更新选择: %w", readErr)
-		}
-		if answer := strings.ToLower(strings.TrimSpace(input)); answer != "y" && answer != "yes" {
-			fmt.Println("已跳过本次更新。")
-			return false, nil
-		}
+	}
+	if executableChanged {
+		fmt.Println("发现程序更新。")
+	}
+
+	printReleaseNotes(release)
+	fmt.Print("是否下载并安装本次更新？[y/N]: ")
+	input, readErr := bufio.NewReader(os.Stdin).ReadString('\n')
+	if readErr != nil && !errors.Is(readErr, io.EOF) {
+		return false, fmt.Errorf("读取更新选择: %w", readErr)
+	}
+	if answer := strings.ToLower(strings.TrimSpace(input)); answer != "y" && answer != "yes" {
+		fmt.Println("已跳过本次更新。")
+		return false, nil
 	}
 
 	stagingDirectory, err := os.MkdirTemp(filepath.Dir(executablePath), ".key-crawl-update-")
@@ -171,50 +186,76 @@ func update() (bool, error) {
 	return true, nil
 }
 
-func fetchLatestReleaseAssets() (map[string]releaseAsset, error) {
+func fetchLatestRelease() (latestRelease, error) {
 	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, latestReleaseURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("创建 GitHub Release 请求: %w", err)
+		return latestRelease{}, errors.New("创建更新检查请求失败")
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	request.Header.Set("User-Agent", "key-crawl-updater")
 	response, err := updateCheckClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("请求 GitHub Latest Release: %w", err)
+		return latestRelease{}, errors.New("连接更新服务失败")
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub Latest Release API 返回 HTTP %d", response.StatusCode)
+		return latestRelease{}, fmt.Errorf("更新服务返回 HTTP %d", response.StatusCode)
 	}
 	var release latestRelease
 	decoder := json.NewDecoder(io.LimitReader(response.Body, 2<<20))
 	if err := decoder.Decode(&release); err != nil {
-		return nil, fmt.Errorf("解析 GitHub Latest Release: %w", err)
+		return latestRelease{}, errors.New("解析更新信息失败")
 	}
-	assets := make(map[string]releaseAsset, len(release.Assets))
-	for _, asset := range release.Assets {
-		assets[asset.Name] = asset
+	return release, nil
+}
+
+func printReleaseNotes(release latestRelease) {
+	title := sanitizeReleaseText(release.Name)
+	if title == "" {
+		title = sanitizeReleaseText(release.TagName)
+	} else if tag := sanitizeReleaseText(release.TagName); tag != "" && tag != title {
+		title += " (" + tag + ")"
 	}
-	return assets, nil
+	if title == "" {
+		title = "最新版本"
+	}
+
+	notes := sanitizeReleaseText(release.Body)
+	if notes == "" {
+		notes = "本次发布未提供更新说明。"
+	}
+
+	fmt.Println()
+	fmt.Println("\033[1;36m━━━━━━━━━━━━━━━━━━ 更新说明 ━━━━━━━━━━━━━━━━━━\033[0m")
+	fmt.Printf("\033[1;37m%s\033[0m\n\n%s\n", title, notes)
+	fmt.Println("\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m")
+	fmt.Println()
+}
+
+func sanitizeReleaseText(value string) string {
+	value = markdownLinkPattern.ReplaceAllString(value, "$1")
+	value = webURLPattern.ReplaceAllString(value, "")
+	value = sourceNamePattern.ReplaceAllString(value, "代码托管平台")
+	return strings.TrimSpace(value)
 }
 
 func requireReleaseAsset(assets map[string]releaseAsset, name string, requireDigest bool) (releaseAsset, error) {
 	asset, ok := assets[name]
 	if !ok || asset.APIURL == "" {
-		return releaseAsset{}, fmt.Errorf("GitHub Release 缺少资产 %s", name)
+		return releaseAsset{}, fmt.Errorf("更新包缺少文件 %s", name)
 	}
 	if requireDigest {
 		normalizedDigest := strings.ToLower(asset.Digest)
 		if !strings.HasPrefix(normalizedDigest, "sha256:") {
-			return releaseAsset{}, fmt.Errorf("GitHub Release 资产 %s 未提供 SHA-256 digest", name)
+			return releaseAsset{}, fmt.Errorf("更新文件 %s 未提供 SHA-256 digest", name)
 		}
 		digest := strings.TrimPrefix(normalizedDigest, "sha256:")
 		if len(digest) != 64 {
-			return releaseAsset{}, fmt.Errorf("GitHub Release 资产 %s 缺少有效的 SHA-256 digest", name)
+			return releaseAsset{}, fmt.Errorf("更新文件 %s 缺少有效的 SHA-256 digest", name)
 		}
 		if _, err := hex.DecodeString(digest); err != nil {
-			return releaseAsset{}, fmt.Errorf("GitHub Release 资产 %s 的 digest 无效: %w", name, err)
+			return releaseAsset{}, fmt.Errorf("更新文件 %s 的 digest 无效", name)
 		}
 	}
 	return asset, nil
@@ -257,23 +298,23 @@ func readExtensionVersion(extensionDirectory string) (string, error) {
 func fetchAssetText(url string, limit int64) (string, error) {
 	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
-		return "", fmt.Errorf("创建请求: %w", err)
+		return "", errors.New("创建扩展版本请求失败")
 	}
 	setAssetDownloadHeaders(request)
 	response, err := updateCheckClient.Do(request)
 	if err != nil {
-		return "", fmt.Errorf("请求 %s: %w", url, err)
+		return "", errors.New("获取远端扩展版本失败")
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("请求 %s 返回 HTTP %d", url, response.StatusCode)
+		return "", fmt.Errorf("扩展版本服务返回 HTTP %d", response.StatusCode)
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	if err != nil {
-		return "", fmt.Errorf("读取 %s: %w", url, err)
+		return "", errors.New("读取远端扩展版本失败")
 	}
 	if int64(len(data)) > limit {
-		return "", fmt.Errorf("%s 响应过大", url)
+		return "", errors.New("远端扩展版本响应过大")
 	}
 	return strings.TrimSpace(string(data)), nil
 }
@@ -281,19 +322,19 @@ func fetchAssetText(url string, limit int64) (string, error) {
 func downloadAndVerify(url, destination, expectedChecksum string) error {
 	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
-		return fmt.Errorf("创建下载请求: %w", err)
+		return errors.New("创建更新下载请求失败")
 	}
 	setAssetDownloadHeaders(request)
 	response, err := updateDownloadClient.Do(request)
 	if err != nil {
-		return fmt.Errorf("下载 %s: %w", url, err)
+		return errors.New("连接更新下载服务失败")
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("下载 %s 返回 HTTP %d", url, response.StatusCode)
+		return fmt.Errorf("更新下载服务返回 HTTP %d", response.StatusCode)
 	}
 	if response.ContentLength > maxAssetSize {
-		return fmt.Errorf("下载 %s 超过大小限制", url)
+		return errors.New("更新文件超过大小限制")
 	}
 
 	file, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
@@ -310,11 +351,11 @@ func downloadAndVerify(url, destination, expectedChecksum string) error {
 		return fmt.Errorf("关闭下载文件: %w", closeErr)
 	}
 	if written > maxAssetSize {
-		return fmt.Errorf("下载 %s 超过大小限制", url)
+		return errors.New("更新文件超过大小限制")
 	}
 	actualChecksum := hex.EncodeToString(hash.Sum(nil))
 	if actualChecksum != strings.ToLower(expectedChecksum) {
-		return fmt.Errorf("%s 的 SHA-256 校验失败", url)
+		return errors.New("更新文件的 SHA-256 校验失败")
 	}
 	return nil
 }
