@@ -1,1 +1,5 @@
-GET http://localhost:1323/analyzer
+### 启动后台分析（202 已启动；409 已有任务运行；200 没有待处理文件）
+POST http://127.0.0.1:1323/analyzer
+
+### 查询当前分析状态，不会启动新任务
+GET http://127.0.0.1:1323/analyzer

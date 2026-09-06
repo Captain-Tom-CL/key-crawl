@@ -39,6 +39,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $releaseNotes = git log -1 --format=%B
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to read the release commit message."
+          }
+          $notesPath = Join-Path $env:RUNNER_TEMP "key-crawl-release-notes.md"
+          [System.IO.File]::WriteAllText($notesPath, ($releaseNotes -join "`n"), [System.Text.UTF8Encoding]::new($false))
+
           gh release create "build-${{ github.run_number }}-${{ github.run_attempt }}" `
             ./build/artifacts/key-crawl.exe `
             ./build/artifacts/extension.zip `
@@ -46,4 +53,4 @@ jobs:
             --target "$(git rev-parse HEAD)" `
             --title "Key Crawl build ${{ github.run_number }}" `
             --latest `
-            --generate-notes
+            --notes-file "$notesPath"

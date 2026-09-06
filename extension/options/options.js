@@ -7,6 +7,8 @@ const baseURLInput = document.querySelector("#baseURL");
 const modelInput = document.querySelector("#model");
 const apiKeyInput = document.querySelector("#apiKey");
 const promptInput = document.querySelector("#prompt");
+const concurrencyInput = document.querySelector("#concurrency");
+const requestsPerMinuteInput = document.querySelector("#requestsPerMinute");
 const showApiKeyInput = document.querySelector("#showApiKey");
 const connectionStatus = document.querySelector("#connectionStatus");
 const connectionText = document.querySelector("#connectionText");
@@ -53,6 +55,8 @@ async function loadSettings() {
     modelInput.value = settings.model ?? "";
     apiKeyInput.value = settings.apiKey ?? "";
     promptInput.value = settings.prompt ?? "";
+    concurrencyInput.value = settings.concurrency ?? 8;
+    requestsPerMinuteInput.value = settings.requestsPerMinute ?? 60;
     updatePromptCount();
     setConnection("online", "服务已连接");
     setSaveStatus("success", "配置已从本地服务载入");
@@ -83,12 +87,14 @@ async function saveSettings(event) {
         baseURL: baseURLInput.value.trim().replace(/\/$/, ""),
         model: modelInput.value.trim(),
         prompt: promptInput.value.trim(),
+        concurrency: Number(concurrencyInput.value),
+        requestsPerMinute: Number(requestsPerMinuteInput.value),
       }),
     });
 
     if (!response.ok) {
       const body = await response.json().catch(() => null);
-      throw new Error(body?.error || `服务返回 ${response.status}`);
+      throw new Error(body?.message || body?.error || `服务返回 ${response.status}`);
     }
 
     setConnection("online", "服务已连接");

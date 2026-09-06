@@ -1,0 +1,224 @@
+:root {
+    color-scheme: light;
+    --ink: #24352f;
+    --muted: #67766f;
+    --paper: #f5f6f3;
+    --surface: #fff;
+    --line: #e1e7e1;
+    --accent: #23654d;
+    --accent-strong: #184b38;
+    --accent-soft: #edf4ee;
+    --danger: #ae4035;
+    font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+}
+
+button,
+input,
+textarea {
+    font: inherit;
+}
+
+button {
+    -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+p {
+    margin: 0;
+}
+
+svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+::selection {
+    color: var(--accent-strong);
+    background: #dbeadb;
+}
+
+.brand-mark {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    color: white;
+    background: var(--accent);
+}
+
+.brand-mark svg {
+    width: 23px;
+    height: 23px;
+}
+
+.eyebrow {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+input[type="text"],
+input[type="url"],
+input[type="number"],
+input[type="password"],
+textarea {
+    min-width: 0;
+    width: 100%;
+    border: 1px solid #ccd6cd;
+    border-radius: 9px;
+    outline: none;
+    color: var(--ink);
+    background: var(--surface);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+input[type="text"],
+input[type="url"],
+input[type="number"],
+input[type="password"] {
+    height: 44px;
+    padding: 0 13px;
+}
+
+textarea {
+    padding: 13px;
+    line-height: 1.8;
+    resize: vertical;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #859089;
+}
+
+input:hover,
+textarea:hover {
+    border-color: #9daf9f;
+}
+
+input:focus,
+textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px #23654d18;
+}
+
+input[type="checkbox"] {
+    accent-color: var(--accent);
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.button-primary {
+    color: white;
+    background: var(--accent);
+}
+
+.button-primary:hover:not(:disabled) {
+    background: var(--accent-strong);
+}
+
+.button-secondary {
+    border-color: #ced8ce;
+    color: var(--ink);
+    background: var(--surface);
+}
+
+.button-secondary:hover:not(:disabled) {
+    border-color: #a2b3a4;
+    background: #f2f5f0;
+}
+
+.button:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.button:disabled {
+    color: #8a948d;
+    border-color: var(--line);
+    background: #eef1ec;
+    cursor: not-allowed;
+}
+
+button:focus-visible,
+a:focus-visible,
+input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+.icon-button {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--muted);
+    background: var(--surface);
+    cursor: pointer;
+    transition: color 150ms ease, background 150ms ease;
+}
+
+.icon-button:hover {
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+
+code {
+    font-family: Consolas, "Cascadia Code", monospace;
+    font-size: 0.95em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+    }
+}

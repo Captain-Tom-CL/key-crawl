@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Key Crawl 设置</title>
+  <link rel="stylesheet" href="../shared/ui.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5v14M18 5l-7 7 7 7M5 12h6"/></svg>
+        </div>
+        <span class="brand-name">Key Crawl</span>
+        <span class="header-divider" aria-hidden="true"></span>
+        <span class="header-label">偏好设置</span>
+      </div>
+      <div class="connection" id="connectionStatus" data-state="checking" role="status">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="connectionText">正在连接</span>
+      </div>
+    </header>
+
+    <div class="page-intro">
+      <p class="eyebrow">YOUR ANALYSIS WORKSPACE</p>
+      <h1>让内容分析，按你的方式运行。</h1>
+      <p class="subtitle">连接本地服务，选择模型，再告诉它你关心什么。</p>
+    </div>
+
+    <form id="settingsForm" class="settings-form">
+      <section class="section" aria-labelledby="serviceHeading">
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="13" rx="2"/><path d="M8 21h8m-4-5v5M8 7h.01M8 11h8"/></svg></span>
+          <div>
+            <h2 id="serviceHeading">本地服务</h2>
+            <p>连接桌面程序，为页面采集与分析提供服务。</p>
+          </div>
+        </div>
+
+        <div class="field service-field">
+          <label for="serviceURL">服务地址</label>
+          <input id="serviceURL" name="serviceURL" type="url" value="http://127.0.0.1:1323" required spellcheck="false" aria-describedby="serviceHint">
+          <p class="hint" id="serviceHint">请先启动 Key Crawl 桌面程序。修改地址后会重新检查连接。</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="modelHeading">
+        <div class="section-heading">
+          <span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4M18 9h4m-4 6h4"/><rect x="10" y="10" width="4" height="4" rx="1"/></svg></span>
+          <div>
+            <h2 id="modelHeading">模型服务</h2>
+            <p>配置 API 与模型，用提示词定义内容分析的方式。</p>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field field-wide">
+            <label for="baseURL">API 地址</label>
+            <input id="baseURL" name="baseURL" type="url" placeholder="https://api.openai.com/v1" required spellcheck="false" aria-describedby="apiHint">
+            <p class="hint" id="apiHint">使用兼容 OpenAI 接口的模型服务地址。</p>
+          </div>
+
+          <div class="field">
+            <label for="model">模型名称</label>
+            <input id="model" name="model" type="text" placeholder="gpt-5.2" required spellcheck="false">
+          </div>
+
+          <div class="field">
+            <label for="apiKey">API Key</label>
+            <input id="apiKey" name="apiKey" type="password" placeholder="sk-..." required autocomplete="off" spellcheck="false">
+            <label class="check-row" for="showApiKey">
+              <input id="showApiKey" type="checkbox">
+              <span>显示密钥</span>
+            </label>
+          </div>
+
+          <div class="field">
+            <label for="concurrency">分析并发数</label>
+            <input id="concurrency" name="concurrency" type="number" min="1" max="32" step="1" value="8" required aria-describedby="concurrencyHint">
+            <p class="hint" id="concurrencyHint">同时处理的 HTML 数量，范围 1–32。建议先用 8，根据服务额度和内存调整。</p>
+          </div>
+
+          <div class="field">
+            <label for="requestsPerMinute">每分钟请求数（RPM）</label>
+            <input id="requestsPerMinute" name="requestsPerMinute" type="number" min="0" max="6000" step="1" value="60" required aria-describedby="rpmHint">
+            <p class="hint" id="rpmHint">所有并发请求及重试共享，均匀发送。0 表示不主动限速，仍保留并发上限和 429 冷却。设置从下一批生效。</p>
+          </div>
+
+          <div class="field field-wide">
+            <label for="prompt">分析提示词</label>
+            <textarea id="prompt" name="prompt" rows="7" placeholder="说明如何分析页面，以及每个字段应如何生成。" required aria-describedby="promptHint promptCount"></textarea>
+            <div class="field-meta">
+              <span id="promptHint">建议明确输出字段，并要求返回 JSON。</span>
+              <span id="promptCount">0 字符</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="form-actions">
+        <p class="save-status" id="saveStatus" role="status" aria-live="polite"></p>
+        <button id="reloadButton" class="button button-secondary" type="button">重新载入</button>
+        <button id="saveButton" class="button button-primary" type="submit">保存配置</button>
+      </footer>
+    </form>
+    <p class="storage-note"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg><span>模型配置保存在桌面程序目录的 <code>data/settings.json</code> 中。</span></p>
+  </main>
+
+  <script src="options.js"></script>
+</body>
+</html>

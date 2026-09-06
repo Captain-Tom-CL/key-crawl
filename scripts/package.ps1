@@ -21,7 +21,8 @@ try {
     New-Item -ItemType Directory -Path $artifactDirectory -Force | Out-Null
 
     Copy-Item $exePath (Join-Path $artifactDirectory "key-crawl.exe")
-    Compress-Archive -Path (Join-Path $projectRoot "extension/*") -DestinationPath (Join-Path $artifactDirectory "extension.zip") -Force
+    $extensionFiles = Get-ChildItem -Path $extensionDirectory -Exclude "jsconfig.json"
+    Compress-Archive -Path $extensionFiles.FullName -DestinationPath (Join-Path $artifactDirectory "extension.zip") -Force
     $extensionManifest = Get-Content (Join-Path $projectRoot "extension/manifest.json") -Raw | ConvertFrom-Json
     $extensionVersion = ([string]$extensionManifest.version).Trim()
     if ([string]::IsNullOrWhiteSpace($extensionVersion)) {

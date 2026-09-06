@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"net"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/captain-tom-cl/key-crawl/src/internal/routes"
+	"github.com/captain-tom-cl/key-crawl/src/internal/settings"
+	"github.com/captain-tom-cl/key-crawl/src/internal/storage"
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -32,10 +38,6 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	if *cleanupUpdatePath != "" {
-		go cleanupUpdateFiles(*cleanupUpdatePath)
-	}
-
 	if !*isDev {
 		restarting, err := update()
 		if err != nil {
@@ -45,13 +47,15 @@ func main() {
 		}
 	}
 
-	startServer(*isDev)
+	if err := startServer(*isDev, *cleanupUpdatePath); err != nil {
+		fmt.Fprintln(os.Stderr, "服务启动失败:", err)
+		os.Exit(1)
+	}
 }
 
-func startServer(isDev bool) {
-	if err := routes.InitializeStorage(); err != nil {
-		fmt.Fprintln(os.Stderr, "初始化数据目录失败:", err)
-		return
+func startServer(isDev bool, cleanupUpdatePath string) error {
+	if err := storage.Initialize(); err != nil {
+		return fmt.Errorf("初始化数据目录失败: %w", err)
 	}
 	e := echo.New()
 	if isDev {
@@ -60,13 +64,26 @@ func startServer(isDev bool) {
 	e.Use(middleware.Recover())
 	routes.RegisterHomeRoutes(e)
 	routes.RegisterHealthRoutes(e)
+	if err := settings.Initialize(); err != nil {
+		e.Logger.Error("加载配置失败，请检查或重新保存配置", "file", settings.FilePath, "error", err)
+	}
 	routes.RegisterSettingsRoutes(e)
 	routes.RegisterHTMLRoutes(e)
 	routes.RegisterAnalyzerRoutes(e)
 	routes.RegisterResultsRoutes(e)
-	fmt.Println()
-	fmt.Println("\033[1;32m● 服务已启动\033[0m  打开 \033[1;4;94mhttp://localhost:1323\033[0m 查看说明")
-	if err := e.Start(":1323"); err != nil {
-		e.Logger.Error("failed to start server", "error", err)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	config := echo.StartConfig{
+		Address: "127.0.0.1:1323",
+		ListenerAddrFunc: func(addr net.Addr) {
+			fmt.Println()
+			fmt.Printf("\033[1;32m● 服务已启动\033[0m  打开 \033[1;4;94mhttp://%s\033[0m 查看说明\n", addr.String())
+			// The listener is bound successfully; failed initialization or binding
+			// must leave update backups intact for manual recovery.
+			if cleanupUpdatePath != "" {
+				go cleanupUpdateFiles(cleanupUpdatePath)
+			}
+		},
 	}
+	return config.Start(ctx, e)
 }

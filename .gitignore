@@ -2,6 +2,9 @@
 /bin/*
 /build/*
 
+# Development dependencies
+node_modules/
+
 # Runtime data
 /data/settings.json
 /data/html/
