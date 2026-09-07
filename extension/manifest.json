@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Key Crawl",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "Collect and analyze page content with the Key Crawl desktop service.",
     "icons": {
         "16": "icons/icon16.png",
@@ -28,16 +28,5 @@
             "32": "icons/icon32.png"
         }
     },
-    "content_scripts": [
-        {
-            "matches": [
-                "<all_urls>"
-            ],
-            "js": [
-                "content/content.js"
-            ],
-            "run_at": "document_idle"
-        }
-    ],
     "options_page": "options/options.html"
 }

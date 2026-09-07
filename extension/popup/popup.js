@@ -3,7 +3,6 @@ const SERVICE_URL_KEY = "serviceURL"
 const OPENED_TABS_KEY = "openedTabs"
 const DEFAULT_SELECTOR = "a"
 const DEFAULT_SERVICE_URL = "http://127.0.0.1:1323"
-const MAX_HTML_BYTES = 5 * 1024 * 1024
 
 const selectorInput = document.querySelector("#anchorSelector")
 const openLinksButton = document.querySelector("#openLinks")
@@ -37,7 +36,7 @@ function isBusy() {
 function updateButtons() {
     const busy = isBusy()
     openLinksButton.disabled = busy
-    sendPagesButton.disabled = busy || !openedTabs.some(canSendPage)
+    sendPagesButton.disabled = isLoadingState || isSendingPages || isOpeningLinks || !openedTabs.some(canSendPage)
     analyzePagesButton.disabled = busy
     analyzePagesButton.textContent = isStartingAnalysis ? "正在启动…"
         : isAnalysisStatusUnknown ? "查询状态中…"
@@ -115,15 +114,7 @@ async function getActivePage() {
 }
 
 async function sendTabMessage(tabId, message) {
-    try {
-        return await chrome.tabs.sendMessage(tabId, message)
-    } catch (error) {
-        await chrome.scripting.executeScript({
-            target: { tabId },
-            files: ["content/content.js"],
-        })
-        return chrome.tabs.sendMessage(tabId, message)
-    }
+    return chrome.runtime.sendMessage({ type: "pageCommand", tabId, command: message })
 }
 
 async function openAllLinks() {
@@ -198,7 +189,7 @@ async function waitForTab(tabId) {
     })
 }
 
-async function collectPageForUpload(tabId) {
+async function enablePageSelection(tabId) {
     await waitForTab(tabId)
     const tab = await chrome.tabs.get(tabId)
     const url = new URL(tab.url)
@@ -211,7 +202,7 @@ async function collectPageForUpload(tabId) {
 
     let page
     try {
-        page = await sendTabMessage(tabId, { type: "collectHTML" })
+        page = await sendTabMessage(tabId, { type: "enableSelection" })
     } catch (error) {
         return { skipped: true, reason: `无法访问页面内容（可能是 PDF 或浏览器受限页面）：${error.message}` }
     }
@@ -219,84 +210,44 @@ async function collectPageForUpload(tabId) {
         return page
     }
     if (!page?.ok) {
-        throw new Error(page?.error || "无法读取页面 HTML")
-    }
-    if (!["text/html", "application/xhtml+xml"].includes(page.contentType)
-        || typeof page.html !== "string" || !/^<html(?:\s|>)/i.test(page.html)) {
-        return { skipped: true, reason: "返回的内容不是 HTML 页面" }
-    }
-    if (new Blob([page.html]).size > MAX_HTML_BYTES) {
-        return { skipped: true, reason: "HTML 超过 5 MiB 大小限制" }
+        throw new Error(page?.error || "无法启用页面选择")
     }
     return page
 }
 
-async function sendAllPages() {
-    if (isBusy()) {
+async function selectPageContents() {
+    if (isLoadingState || isSendingPages || isOpeningLinks) {
         return
     }
     isSendingPages = true
     updateButtons()
-    let sent = 0
+    let enabled = 0
     let failed = 0
     let skipped = 0
+    let firstEnabledTabId = null
 
     try {
-        const { [SERVICE_URL_KEY]: savedServiceURL } = await chrome.storage.local.get(SERVICE_URL_KEY)
-        const serviceURL = (savedServiceURL || DEFAULT_SERVICE_URL).replace(/\/$/, "")
         const pending = openedTabs.filter(canSendPage)
         for (const item of pending) {
-            setStatus(`正在处理 ${sent + failed + skipped + 1}/${pending.length}...`)
+            setStatus(`正在启用选区 ${enabled + failed + skipped + 1}/${pending.length}...`)
             try {
-                const page = await collectPageForUpload(item.tabId)
+                const page = await enablePageSelection(item.tabId)
                 if (page.skipped) {
-                    item.state = "skipped"
-                    item.skipReason = page.reason
-                    delete item.error
                     skipped += 1
                 } else {
-                    const response = await fetch(`${serviceURL}/html`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "text/html; charset=utf-8",
-                            "x-url": page.url,
-                        },
-                        body: page.html,
-                    })
-                    if (response.status === 413) {
-                        item.state = "skipped"
-                        item.skipReason = "HTML 超过服务端大小限制（5 MiB）"
-                        delete item.error
-                        skipped += 1
-                    } else {
-                        if (!response.ok) {
-                            throw new Error(`接口返回 ${response.status}`)
-                        }
-                        item.state = "sent"
-                        delete item.error
-                        delete item.skipReason
-                        sent += 1
-                        try {
-                            await chrome.tabs.remove(item.tabId)
-                            delete item.tabId
-                        } catch {
-                            // The page may already have been closed by the user.
-                        }
-                    }
+                    enabled += 1
+                    firstEnabledTabId ??= item.tabId
                 }
             } catch (error) {
-                item.state = "error"
-                item.error = error.message
                 failed += 1
+                setStatus(`启用失败：${error.message}`, "error")
             }
-
-            await chrome.storage.session.set({ [OPENED_TABS_KEY]: openedTabs })
-            renderQueue()
         }
 
-        setStatus(`发送完成：成功 ${sent}，跳过 ${skipped}，失败 ${failed}`, failed ? "error" : "success")
+        setStatus(`选区工具已启用：${enabled}，跳过 ${skipped}，失败 ${failed}`, failed ? "error" : "success")
+        if (firstEnabledTabId) await chrome.tabs.update(firstEnabledTabId, { active: true })
     } catch (error) {
-        setStatus(`发送中断：${error.message}`, "error")
+        setStatus(`启用选区中断：${error.message}`, "error")
     } finally {
         isSendingPages = false
         renderQueue()
@@ -365,7 +316,7 @@ function showAnalysisTask(task) {
         } else if (task.error) {
             setAnalysisStatus(`分析异常结束：${task.error}（成功 ${task.succeeded}，失败 ${task.failed}）`, "error")
         } else if (task.total === 0) {
-            setAnalysisStatus("没有待分析的页面，请先批量发送")
+            setAnalysisStatus("没有待分析的页面，请先发送选区")
         } else if (task.failed > 0) {
             setAnalysisStatus(`分析结束：成功 ${task.succeeded}，失败 ${task.failed}，详情见服务日志`, "error")
         } else {
@@ -444,11 +395,17 @@ selectorInput.addEventListener("change", () => {
     chrome.storage.local.set({ [SELECTOR_KEY]: selectorInput.value.trim() })
 })
 openLinksButton.addEventListener("click", openAllLinks)
-sendPagesButton.addEventListener("click", sendAllPages)
+sendPagesButton.addEventListener("click", selectPageContents)
 analyzePagesButton.addEventListener("click", analyzePages)
 openResultsButton.addEventListener("click", openResults)
 openOptionsButton.addEventListener("click", () => chrome.runtime.openOptionsPage())
 document.addEventListener("DOMContentLoaded", restoreState)
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "session" && changes[OPENED_TABS_KEY]) {
+        openedTabs = changes[OPENED_TABS_KEY].newValue || []
+        renderQueue()
+    }
+})
 window.addEventListener("pagehide", () => {
     isPopupClosed = true
     stopAnalysisPolling()

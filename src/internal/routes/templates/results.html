@@ -71,10 +71,13 @@
                 </div>
 
                 {{if .Figure}}
-                <div class="mt-4 rounded-2xl bg-sky-50 p-4">
-                    <p class="mb-1 text-xs font-semibold tracking-wider text-sky-600 uppercase">图表信息</p>
-                    <p class="text-sm leading-6 text-sky-950">{{.Figure}}</p>
-                </div>
+                <figure class="mt-4">
+                    <a href="{{.Figure}}" target="_blank" rel="noopener noreferrer">
+                        <img src="{{.Figure}}" alt="{{.Title}} 封面"
+                            class="aspect-[4/3] w-full rounded-lg bg-sky-50 object-contain" loading="lazy"
+                            decoding="async" referrerpolicy="no-referrer">
+                    </a>
+                </figure>
                 {{end}}
 
                 <div
